@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://axiom-lang.dev/schema/cir/0.1",
+  "title": "Axiom Canonical IR v0.1",
+  "type": "object",
+  "required": ["version", "modules", "nodes", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "axiom-cir-0.1" },
+    "modules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleRef" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "nodes": { "$ref": "#/$defs/nodeStore" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "$defs": {
+    "nodeId": {
+      "type": "object",
+      "required": ["namespace", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "namespace": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nodeRef": {
+      "type": "object",
+      "required": ["category", "namespace", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "category": { "type": "string", "minLength": 1 },
+        "namespace": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      }
+    },
+    "moduleRef": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeRef" },
+        { "properties": { "category": { "const": "Module" } } }
+      ]
+    },
+    "typeRef": {
+      "oneOf": [
+        { "$ref": "#/$defs/builtinType" },
+        { "$ref": "#/$defs/namedType" },
+        { "$ref": "#/$defs/optionType" },
+        { "$ref": "#/$defs/resultType" },
+        { "$ref": "#/$defs/refinedTypeRef" }
+      ]
+    },
+    "builtinType": {
+      "type": "object",
+      "required": ["kind", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "BuiltinType" },
+        "name": { "enum": ["Integer", "Boolean", "String", "Unit"] }
+      }
+    },
+    "namedType": {
+      "type": "object",
+      "required": ["kind", "declaration"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "NamedType" },
+        "declaration": {
+          "allOf": [
+            { "$ref": "#/$defs/nodeRef" },
+            { "properties": { "category": { "const": "TypeDecl" } } }
+          ]
+        }
+      }
+    },
+    "optionType": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "additionalProperties": false,
+      "properties": { "kind": { "const": "OptionType" }, "value": { "$ref": "#/$defs/typeRef" } }
+    },
+    "resultType": {
+      "type": "object",
+      "required": ["kind", "value", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "ResultType" },
+        "value": { "$ref": "#/$defs/typeRef" },
+        "error": { "$ref": "#/$defs/typeRef" }
+      }
+    },
+    "refinedTypeRef": {
+      "type": "object",
+      "required": ["kind", "declaration"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "RefinedTypeRef" },
+        "declaration": {
+          "allOf": [
+            { "$ref": "#/$defs/nodeRef" },
+            { "properties": { "category": { "const": "TypeDecl" } } }
+          ]
+        }
+      }
+    },
+    "sourceSpan": {
+      "type": "object",
+      "required": ["document", "start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "document": { "type": "string", "minLength": 1 },
+        "start": { "$ref": "#/$defs/position" },
+        "end": { "$ref": "#/$defs/position" }
+      }
+    },
+    "position": {
+      "type": "object",
+      "required": ["line", "column", "offset"],
+      "additionalProperties": false,
+      "properties": {
+        "line": { "type": "integer", "minimum": 0 },
+        "column": { "type": "integer", "minimum": 0 },
+        "offset": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["id", "name", "declarations", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "name": { "type": "string", "minLength": 1 },
+        "declarations": { "type": "array", "items": { "$ref": "#/$defs/declarationRef" }, "uniqueItems": true },
+        "source": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } }
+      }
+    },
+    "declarationRef": {
+      "oneOf": [
+        { "allOf": [{ "$ref": "#/$defs/nodeRef" }, { "properties": { "category": { "const": "TypeDecl" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/nodeRef" }, { "properties": { "category": { "const": "FunctionDecl" } } }] }
+      ]
+    },
+    "typeDecl": {
+      "type": "object",
+      "required": ["id", "name", "definition", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "name": { "type": "string", "minLength": 1 },
+        "definition": { "$ref": "#/$defs/typeDefinition" },
+        "source": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } }
+      }
+    },
+    "typeDefinition": {
+      "oneOf": [
+        { "$ref": "#/$defs/primitiveDefinition" },
+        { "$ref": "#/$defs/aliasDefinition" },
+        { "$ref": "#/$defs/recordDefinition" },
+        { "$ref": "#/$defs/sumDefinition" },
+        { "$ref": "#/$defs/refinedDefinition" }
+      ]
+    },
+    "primitiveDefinition": {
+      "type": "object", "required": ["kind", "name"], "additionalProperties": false,
+      "properties": { "kind": { "const": "PrimitiveType" }, "name": { "enum": ["Integer", "Boolean", "String", "Unit"] } }
+    },
+    "aliasDefinition": {
+      "type": "object", "required": ["kind", "target"], "additionalProperties": false,
+      "properties": { "kind": { "const": "AliasType" }, "target": { "$ref": "#/$defs/typeRef" } }
+    },
+    "recordDefinition": {
+      "type": "object", "required": ["kind", "fields"], "additionalProperties": false,
+      "properties": { "kind": { "const": "RecordType" }, "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } } }
+    },
+    "field": {
+      "type": "object", "required": ["name", "type"], "additionalProperties": false,
+      "properties": { "name": { "type": "string", "minLength": 1 }, "type": { "$ref": "#/$defs/typeRef" } }
+    },
+    "sumDefinition": {
+      "type": "object", "required": ["kind", "variants"], "additionalProperties": false,
+      "properties": { "kind": { "const": "SumType" }, "variants": { "type": "array", "items": { "$ref": "#/$defs/variant" }, "minItems": 1 } }
+    },
+    "variant": {
+      "type": "object", "required": ["name", "fields"], "additionalProperties": false,
+      "properties": { "name": { "type": "string", "minLength": 1 }, "fields": { "type": "array", "items": { "$ref": "#/$defs/typeRef" } } }
+    },
+    "refinedDefinition": {
+      "type": "object", "required": ["kind", "base", "predicate"], "additionalProperties": false,
+      "properties": { "kind": { "const": "RefinedType" }, "base": { "$ref": "#/$defs/typeRef" }, "predicate": { "$ref": "#/$defs/expressionRef" } }
+    },
+    "functionDecl": {
+      "type": "object", "required": ["id", "name", "parameters", "return_type", "effects", "contracts", "body", "source"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "name": { "type": "string", "minLength": 1 },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameter" } },
+        "return_type": { "$ref": "#/$defs/typeRef" },
+        "effects": { "type": "array", "items": { "$ref": "#/$defs/effectRef" }, "uniqueItems": true },
+        "contracts": { "type": "array", "items": { "$ref": "#/$defs/contractRef" }, "uniqueItems": true },
+        "body": { "$ref": "#/$defs/expressionRef" },
+        "source": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } }
+      }
+    },
+    "parameter": {
+      "type": "object", "required": ["id", "name", "type"], "additionalProperties": false,
+      "properties": { "id": { "$ref": "#/$defs/nodeId" }, "name": { "type": "string", "minLength": 1 }, "type": { "$ref": "#/$defs/typeRef" } }
+    },
+    "binding": {
+      "type": "object", "required": ["id", "name", "type"], "additionalProperties": false,
+      "properties": { "id": { "$ref": "#/$defs/nodeId" }, "name": { "type": "string", "minLength": 1 }, "type": { "$ref": "#/$defs/typeRef" } }
+    },
+    "effectRef": {
+      "type": "object", "required": ["name"], "additionalProperties": false,
+      "properties": { "name": { "type": "string", "minLength": 1 } }
+    },
+    "expressionRef": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeRef" },
+        { "properties": { "category": { "const": "Expr" } } }
+      ]
+    },
+    "contractRef": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeRef" },
+        { "properties": { "category": { "const": "Contract" } } }
+      ]
+    },
+    "expr": {
+      "type": "object", "required": ["id", "type", "operation", "source"], "additionalProperties": false,
+      "properties": { "id": { "$ref": "#/$defs/nodeId" }, "type": { "$ref": "#/$defs/typeRef" }, "operation": { "$ref": "#/$defs/operation" }, "source": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } } }
+    },
+    "operation": {
+      "oneOf": [
+        { "$ref": "#/$defs/integerLiteral" }, { "$ref": "#/$defs/booleanLiteral" }, { "$ref": "#/$defs/stringLiteral" },
+        { "$ref": "#/$defs/variableRef" }, { "$ref": "#/$defs/letOperation" }, { "$ref": "#/$defs/ifOperation" },
+        { "$ref": "#/$defs/callOperation" }, { "$ref": "#/$defs/constructOperation" }, { "$ref": "#/$defs/recordConstructOperation" },
+        { "$ref": "#/$defs/fieldReadOperation" }, { "$ref": "#/$defs/binaryOperation" }, { "$ref": "#/$defs/returnOperation" },
+        { "$ref": "#/$defs/refineOperation" }
+      ]
+    },
+    "integerLiteral": { "type": "object", "required": ["kind", "value"], "additionalProperties": false, "properties": { "kind": { "const": "IntegerLiteral" }, "value": { "type": "string", "pattern": "^-?[0-9]+$" } } },
+    "booleanLiteral": { "type": "object", "required": ["kind", "value"], "additionalProperties": false, "properties": { "kind": { "const": "BooleanLiteral" }, "value": { "type": "boolean" } } },
+    "stringLiteral": { "type": "object", "required": ["kind", "value"], "additionalProperties": false, "properties": { "kind": { "const": "StringLiteral" }, "value": { "type": "string" } } },
+    "variableRef": { "type": "object", "required": ["kind", "declaration"], "additionalProperties": false, "properties": { "kind": { "const": "VariableRef" }, "declaration": { "$ref": "#/$defs/nodeRef" } } },
+    "letOperation": { "type": "object", "required": ["kind", "binding", "value", "body"], "additionalProperties": false, "properties": { "kind": { "const": "Let" }, "binding": { "allOf": [{ "$ref": "#/$defs/nodeRef" }, { "properties": { "category": { "const": "Binding" } } }] }, "value": { "$ref": "#/$defs/expressionRef" }, "body": { "$ref": "#/$defs/expressionRef" } } },
+    "ifOperation": { "type": "object", "required": ["kind", "condition", "then_branch", "else_branch"], "additionalProperties": false, "properties": { "kind": { "const": "If" }, "condition": { "$ref": "#/$defs/expressionRef" }, "then_branch": { "$ref": "#/$defs/expressionRef" }, "else_branch": { "$ref": "#/$defs/expressionRef" } } },
+    "callOperation": { "type": "object", "required": ["kind", "function", "arguments"], "additionalProperties": false, "properties": { "kind": { "const": "Call" }, "function": { "allOf": [{ "$ref": "#/$defs/nodeRef" }, { "properties": { "category": { "const": "FunctionDecl" } } }] }, "arguments": { "type": "array", "items": { "$ref": "#/$defs/expressionRef" } } } },
+    "constructOperation": { "type": "object", "required": ["kind", "type", "variant", "arguments"], "additionalProperties": false, "properties": { "kind": { "const": "Construct" }, "type": { "$ref": "#/$defs/typeRef" }, "variant": { "type": "string", "minLength": 1 }, "arguments": { "type": "array", "items": { "$ref": "#/$defs/expressionRef" } } } },
+    "recordConstructOperation": { "type": "object", "required": ["kind", "type", "fields"], "additionalProperties": false, "properties": { "kind": { "const": "RecordConstruct" }, "type": { "$ref": "#/$defs/typeRef" }, "fields": { "type": "object", "additionalProperties": { "$ref": "#/$defs/expressionRef" } } } },
+    "fieldReadOperation": { "type": "object", "required": ["kind", "value", "field"], "additionalProperties": false, "properties": { "kind": { "const": "FieldRead" }, "value": { "$ref": "#/$defs/expressionRef" }, "field": { "type": "string", "minLength": 1 } } },
+    "binaryOperation": { "type": "object", "required": ["kind", "operator", "left", "right"], "additionalProperties": false, "properties": { "kind": { "const": "Binary" }, "operator": { "enum": ["Add", "Subtract", "Multiply", "Divide", "Remainder", "Less", "LessOrEqual", "Equal", "NotEqual", "Greater", "GreaterOrEqual", "And", "Or"] }, "left": { "$ref": "#/$defs/expressionRef" }, "right": { "$ref": "#/$defs/expressionRef" } } },
+    "returnOperation": { "type": "object", "required": ["kind", "value"], "additionalProperties": false, "properties": { "kind": { "const": "Return" }, "value": { "$ref": "#/$defs/expressionRef" } } },
+    "refineOperation": { "type": "object", "required": ["kind", "target", "value"], "additionalProperties": false, "properties": { "kind": { "const": "Refine" }, "target": { "$ref": "#/$defs/refinedTypeRef" }, "value": { "$ref": "#/$defs/expressionRef" } } },
+    "contract": {
+      "type": "object", "required": ["id", "kind", "predicate", "status", "evidence"], "additionalProperties": false,
+      "properties": { "id": { "$ref": "#/$defs/nodeId" }, "kind": { "enum": ["Requires", "Ensures", "Invariant"] }, "predicate": { "$ref": "#/$defs/expressionRef" }, "status": { "enum": ["Proven", "Checked", "Assumed", "Unknown"] }, "evidence": { "type": ["object", "null"], "additionalProperties": true } }
+    },
+    "nodeStore": {
+      "type": "object", "required": ["modules", "types", "functions", "bindings", "expressions", "contracts"], "additionalProperties": false,
+      "properties": {
+        "modules": { "type": "object", "additionalProperties": { "$ref": "#/$defs/module" } },
+        "types": { "type": "object", "additionalProperties": { "$ref": "#/$defs/typeDecl" } },
+        "functions": { "type": "object", "additionalProperties": { "$ref": "#/$defs/functionDecl" } },
+        "bindings": { "type": "object", "additionalProperties": { "$ref": "#/$defs/binding" } },
+        "expressions": { "type": "object", "additionalProperties": { "$ref": "#/$defs/expr" } },
+        "contracts": { "type": "object", "additionalProperties": { "$ref": "#/$defs/contract" } }
+      }
+    }
+  }
+}
